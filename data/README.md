@@ -1,11 +1,18 @@
-Dataset is not included due to size.
+# Dataset Information
 
-Dataset used:
-CICIDS2017
+This project uses the CICIDS2017 dataset.
 
-Processed tensors:
-- data/tensors/X_lstm.npy
-- data/tensors/y_lstm.npy
+Due to size constraints, raw and processed datasets are not included in this repository.
 
-To reproduce:
-Run scripts in ml/ folder.
+## Directory structure (local only)
+
+- raw/            Original CICIDS CSV files
+- processed/      Cleaned feature tables
+- temporal/       Sliding window outputs
+- tensors/        LSTM tensors (.npy)
+
+## Reproduction
+Run scripts in `ml/` in the following order:
+1. preprocess.py
+2. temporal_windows.py
+3. prepare_lstm_tensors.py
