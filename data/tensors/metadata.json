@@ -1,0 +1,7 @@
+{
+  "samples": 215,
+  "timesteps": 5,
+  "features": 2706,
+  "sequence_length": 5,
+  "label": "binary_DoS"
+}

@@ -1,23 +1,30 @@
 # Python
+.venv/
 __pycache__/
 *.pyc
-.venv/
-venv/
-
-# Data (large)
-data/
 
 # Node
 node_modules/
 frontend/node_modules/
 
-# Env
+# Env files
 .env
 .env.local
+
+# Data (large / generated)
+data/raw/
+data/processed/
+data/final/
+data/temporal/
+data/lstm/
+data/inference/
+data/attack_families/
+data/tensors/*.npy
+
+# Logs & artifacts
+backend/validation/logs/
+backend/validation/artifacts/
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
