@@ -16,7 +16,8 @@ MODEL_PATH = os.environ.get("MODEL_PATH") or os.path.abspath(
 
 # Number of time-steps and features expected by the model
 WINDOW_SIZE = int(os.environ.get("WINDOW_SIZE", 10))
-FEATURE_COUNT = int(os.environ.get("FEATURE_COUNT", 86))  # adjust if needed
+FEATURES_PER_STEP = int(os.environ.get("FEATURES_PER_STEP", 8))
+FEATURE_COUNT = WINDOW_SIZE * FEATURES_PER_STEP
 
 # Allowed CORS origins (add your frontend origin)
 ALLOWED_ORIGINS = [
@@ -107,13 +108,11 @@ async def predict(req: PredictRequest):
 
     # 3) prepare data for prediction
     try:
-        x = np.array(features, dtype=np.float32).reshape((1, WINDOW_SIZE, FEATURE_COUNT // WINDOW_SIZE))
-        # Note: depends on how you flattened features; if features is shape (WINDOW_SIZE * num_features),
-        # set FEATURE_COUNT = WINDOW_SIZE * num_features and reshape accordingly:
-        x = np.array(features, dtype=np.float32).reshape((1, WINDOW_SIZE, FEATURE_COUNT // WINDOW_SIZE))
+            x = np.array(features, dtype=np.float32).reshape(
+                     (1, WINDOW_SIZE, FEATURES_PER_STEP)
+                        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"feature reshape failed: {e}")
-
+            raise HTTPException(status_code=400, detail=f"feature reshape failed: {e}")
     # 4) model predict
     try:
         preds = model.predict(x, verbose=0)
