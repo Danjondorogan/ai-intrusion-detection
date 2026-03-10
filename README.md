@@ -152,10 +152,10 @@ py -3.10 -m venv .venv
 .\.venv\Scripts\Activate
 
 2) Install Python dependencies (backend + ML)
-# if backend/requirements.txt exists:
+if backend/requirements.txt exists:
 pip install -r backend/requirements.txt
 
-# otherwise:
+otherwise:
 pip install fastapi uvicorn numpy pandas scikit-learn joblib shap matplotlib tensorflow==2.15 seaborn xgboost
 
 3) Install Node dependencies (frontend)
@@ -253,4 +253,5 @@ This project is intended for cybersecurity research and education only. Do not u
 License: MIT (see LICENSE)
 Dataset: CICIDS2017 (University of New Brunswick)
 Model: LSTM trained using cleaned CICIDS2017_improved
+
 
