@@ -16,7 +16,7 @@ MODEL_PATH = os.environ.get("MODEL_PATH") or os.path.abspath(
 
 # Number of time-steps and features expected by the model
 WINDOW_SIZE = int(os.environ.get("WINDOW_SIZE", 10))
-FEATURES_PER_STEP = int(os.environ.get("FEATURES_PER_STEP", 8))
+FEATURES_PER_STEP = int(os.environ.get("FEATURES_PER_STEP", 86))
 FEATURE_COUNT = WINDOW_SIZE * FEATURES_PER_STEP
 
 # Allowed CORS origins (add your frontend origin)

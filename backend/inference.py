@@ -7,17 +7,26 @@ import tensorflow as tf
 
 from pathlib import Path
 from collections import deque
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
+
 logger = logging.getLogger("OnlineLSTMInference")
 
-MODEL_PATH = Path("models/dos_lstm_final.keras")
-SCALER_PATH = Path("data/final/standard_scaler.joblib")
-SCHEMA_PATH = Path("data/tensors/feature_schema.json")
+
+# ---------------------------------------------------
+# Paths
+# ---------------------------------------------------
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+MODEL_PATH = BASE_DIR / "models" / "dos_lstm_final.keras"
+SCALER_PATH = BASE_DIR / "data" / "final" / "standard_scaler.joblib"
+SCHEMA_PATH = BASE_DIR / "data" / "tensors" / "feature_schema.json"
+
 
 if not MODEL_PATH.exists():
     raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
@@ -28,16 +37,27 @@ if not SCALER_PATH.exists():
 if not SCHEMA_PATH.exists():
     raise FileNotFoundError(f"Schema not found at {SCHEMA_PATH}")
 
-logger.info("Loading LSTM model")
+
+# ---------------------------------------------------
+# Load model and preprocessing objects
+# ---------------------------------------------------
+
+logger.info("Loading LSTM model...")
 model = tf.keras.models.load_model(MODEL_PATH)
 
-logger.info("Loading scaler")
+logger.info("Loading scaler...")
 scaler = joblib.load(SCALER_PATH)
 
 with open(SCHEMA_PATH, "r") as f:
     schema = json.load(f)
 
+
+# ---------------------------------------------------
+# Resolve schema
+# ---------------------------------------------------
+
 def resolve_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
+
     if "window_size" not in schema:
         raise RuntimeError("Schema missing window_size")
 
@@ -65,67 +85,99 @@ def resolve_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
         "feature_columns": feature_columns,
     }
 
+
 resolved = resolve_schema(schema)
 
 WINDOW_SIZE = resolved["window_size"]
 NUM_FEATURES = resolved["num_features"]
 FLATTENED_FEATURES = resolved["flattened_features"]
-FEATURE_COLUMNS = resolved["feature_columns"]
 
 logger.info(f"Window size: {WINDOW_SIZE}")
 logger.info(f"Features per timestep: {NUM_FEATURES}")
 
+
+# ---------------------------------------------------
+# Temporal Buffer
+# ---------------------------------------------------
+
 class TemporalBuffer:
+
     def __init__(self, window_size: int, num_features: int):
         self.window_size = window_size
         self.num_features = num_features
         self.buffer = deque(maxlen=window_size)
 
-    def reset(self) -> None:
+    def reset(self):
         self.buffer.clear()
 
-    def add(self, vector: np.ndarray) -> None:
+    def add(self, vector: np.ndarray):
+
         if vector.shape != (self.num_features,):
             raise ValueError(
                 f"Expected ({self.num_features},) got {vector.shape}"
             )
+
         self.buffer.append(vector)
 
-    def is_ready(self) -> bool:
+    def is_ready(self):
         return len(self.buffer) == self.window_size
 
-    def size(self) -> int:
+    def size(self):
         return len(self.buffer)
 
-    def get_tensor(self) -> np.ndarray:
+    def get_tensor(self):
+
         if not self.is_ready():
             raise RuntimeError("Temporal buffer not full")
+
         return np.array(self.buffer, dtype=np.float32).reshape(
             1, self.window_size, self.num_features
         )
 
+
+# ---------------------------------------------------
+# Online inference engine
+# ---------------------------------------------------
+
 class OnlineLSTMInference:
+
     PROB_THRESHOLD = 0.5
     REQUIRED_CONSECUTIVE_DETECTIONS = 3
 
     def __init__(self):
+
         self.buffer = TemporalBuffer(WINDOW_SIZE, NUM_FEATURES)
+
         self.consecutive_detections = 0
         self.total_predictions = 0
+
         self._last_lstm_tensor: Optional[np.ndarray] = None
         self._last_probability: Optional[float] = None
         self._last_timestamp: Optional[float] = None
 
-    def preprocess(self, raw_vector: np.ndarray) -> np.ndarray:
+    # ---------------------------------------------
+    # Preprocess
+    # ---------------------------------------------
+
+    def preprocess(self, raw_vector: np.ndarray):
+
         if raw_vector.shape != (NUM_FEATURES,):
             raise ValueError(
                 f"Expected ({NUM_FEATURES},) got {raw_vector.shape}"
             )
+
         X = raw_vector.reshape(1, -1)
+
         X_scaled = scaler.transform(X)
+
         return X_scaled.flatten()
 
-    def _severity(self, p: float) -> str:
+    # ---------------------------------------------
+    # Severity mapping
+    # ---------------------------------------------
+
+    def severity(self, p):
+
         if p < 0.30:
             return "NORMAL"
         if p < 0.50:
@@ -136,14 +188,22 @@ class OnlineLSTMInference:
             return "ATTACK_MEDIUM"
         return "ATTACK_CRITICAL"
 
-    def predict(self, raw_vector: np.ndarray) -> Dict[str, Any]:
+    # ---------------------------------------------
+    # Predict
+    # ---------------------------------------------
+
+    def predict(self, raw_vector: np.ndarray):
+
         start = time.time()
+
         self.total_predictions += 1
 
         scaled = self.preprocess(raw_vector)
+
         self.buffer.add(scaled)
 
         if not self.buffer.is_ready():
+
             return {
                 "status": "warming_up",
                 "timesteps_collected": self.buffer.size(),
@@ -151,6 +211,7 @@ class OnlineLSTMInference:
             }
 
         X_lstm = self.buffer.get_tensor()
+
         probability = float(model.predict(X_lstm, verbose=0)[0][0])
 
         self._last_lstm_tensor = X_lstm.copy()
@@ -163,14 +224,15 @@ class OnlineLSTMInference:
             self.consecutive_detections = 0
 
         confirmed = (
-            self.consecutive_detections >= self.REQUIRED_CONSECUTIVE_DETECTIONS
+            self.consecutive_detections
+            >= self.REQUIRED_CONSECUTIVE_DETECTIONS
         )
 
-        latency = (time.time() - start) * 1000.0
+        latency = (time.time() - start) * 1000
 
         return {
             "status": "attack" if confirmed else "monitoring",
-            "severity": self._severity(probability),
+            "severity": self.severity(probability),
             "dos_probability": probability,
             "prediction": int(confirmed),
             "consecutive_detections": self.consecutive_detections,
@@ -178,26 +240,16 @@ class OnlineLSTMInference:
             "latency_ms": round(latency, 3),
         }
 
-    def get_temporal_tensor(self) -> np.ndarray:
+    def get_temporal_tensor(self):
+
         if self._last_lstm_tensor is None:
             raise RuntimeError("No completed inference available")
+
         return self._last_lstm_tensor
 
-    def get_last_probability(self) -> float:
-        if self._last_probability is None:
-            raise RuntimeError("No completed inference available")
-        return float(self._last_probability)
+    def reset(self):
 
-    def reset(self) -> None:
         self.buffer.reset()
+
         self.consecutive_detections = 0
         self.total_predictions = 0
-        self._last_lstm_tensor = None
-        self._last_probability = None
-        self._last_timestamp = None
-
-if __name__ == "__main__":
-    engine = OnlineLSTMInference()
-    dummy = np.zeros(NUM_FEATURES, dtype=np.float32)
-    for i in range(WINDOW_SIZE + 3):
-        print(engine.predict(dummy))
