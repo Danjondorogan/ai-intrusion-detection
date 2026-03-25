@@ -4,6 +4,7 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
 import json
 import time
 
@@ -12,7 +13,10 @@ import time
 # =====================================================
 DATA_DIR = Path("data/tensors")
 MODEL_DIR = Path("models")
+RESULTS_DIR = Path("results")
+
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 X_PATH = DATA_DIR / "X_lstm.npy"
 Y_PATH = DATA_DIR / "y_lstm.npy"
@@ -31,8 +35,8 @@ RANDOM_STATE = 42
 # =====================================================
 print("[INFO] Loading LSTM tensors")
 
-X = np.load(X_PATH, mmap_mode="r")
-y = np.load(Y_PATH)
+X = np.load(X_PATH, mmap_mode="r").astype(np.float32)
+y = np.load(Y_PATH).astype(np.int64)
 
 print(f"[INFO] X shape: {X.shape}")
 print(f"[INFO] y shape: {y.shape}")
@@ -63,7 +67,7 @@ print(f"[INFO] Train samples: {len(X_train)}")
 print(f"[INFO] Val samples:   {len(X_val)}")
 
 # =====================================================
-# CLASS WEIGHTS (CRITICAL)
+# CLASS WEIGHTS
 # =====================================================
 print("[INFO] Computing class weights")
 
@@ -73,7 +77,7 @@ weights = compute_class_weight(
     classes=classes,
     y=y_train
 )
-class_weights = dict(zip(classes, weights))
+class_weights = {int(k): float(v) for k, v in zip(classes, weights)}
 
 print("[INFO] Class weights:", class_weights)
 
@@ -85,19 +89,11 @@ print("[INFO] Building LSTM model")
 model = tf.keras.Sequential([
     tf.keras.layers.Input(shape=(WINDOW_SIZE, NUM_FEATURES)),
 
-    tf.keras.layers.LSTM(
-        128,
-        return_sequences=True,
-        activation="tanh"
-    ),
+    tf.keras.layers.LSTM(128, return_sequences=True),
     tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Dropout(0.3),
 
-    tf.keras.layers.LSTM(
-        64,
-        return_sequences=False,
-        activation="tanh"
-    ),
+    tf.keras.layers.LSTM(64),
     tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Dropout(0.3),
 
@@ -162,6 +158,31 @@ elapsed = time.time() - start_time
 print(f"[INFO] Training finished in {elapsed/60:.2f} minutes")
 
 # =====================================================
+# SAVE TRAINING GRAPHS (IMPORTANT)
+# =====================================================
+print("[INFO] Saving training graphs")
+
+plt.figure()
+plt.plot(history.history["loss"], label="train_loss")
+plt.plot(history.history["val_loss"], label="val_loss")
+plt.legend()
+plt.title("Training vs Validation Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.savefig(RESULTS_DIR / "loss.png")
+plt.close()
+
+plt.figure()
+plt.plot(history.history["accuracy"], label="train_acc")
+plt.plot(history.history["val_accuracy"], label="val_acc")
+plt.legend()
+plt.title("Training vs Validation Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.savefig(RESULTS_DIR / "accuracy.png")
+plt.close()
+
+# =====================================================
 # EVALUATION
 # =====================================================
 print("\n[INFO] Evaluating model")
@@ -169,11 +190,29 @@ print("\n[INFO] Evaluating model")
 y_pred_prob = model.predict(X_val, batch_size=BATCH_SIZE)
 y_pred = (y_pred_prob >= 0.5).astype(int).ravel()
 
+report = classification_report(y_val, y_pred, digits=4)
+cm = confusion_matrix(y_val, y_pred)
+
 print("\n[INFO] Classification Report")
-print(classification_report(y_val, y_pred, digits=4))
+print(report)
 
 print("\n[INFO] Confusion Matrix")
-print(confusion_matrix(y_val, y_pred))
+print(cm)
+
+# Save report
+with open(RESULTS_DIR / "classification_report.txt", "w") as f:
+    f.write(report)
+
+# Save confusion matrix CSV
+np.savetxt(RESULTS_DIR / "confusion_matrix.csv", cm, delimiter=",")
+
+# Plot confusion matrix
+plt.figure()
+plt.imshow(cm)
+plt.title("Confusion Matrix")
+plt.colorbar()
+plt.savefig(RESULTS_DIR / "confusion_matrix.png")
+plt.close()
 
 # =====================================================
 # SAVE FINAL MODEL
