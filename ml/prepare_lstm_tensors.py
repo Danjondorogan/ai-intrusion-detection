@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import json
 from pathlib import Path
-import sys
 import time
+from typing import List
 
 # =====================================================
 # CONFIG
@@ -16,7 +16,8 @@ X_PATH = OUTPUT_DIR / "X_lstm.npy"
 Y_PATH = OUTPUT_DIR / "y_lstm.npy"
 SCHEMA_PATH = OUTPUT_DIR / "feature_schema.json"
 
-WINDOW_SIZE = 5
+# Match the current LSTM/backend contract
+WINDOW_SIZE = 10
 
 # =====================================================
 # LOAD DATA
@@ -47,15 +48,21 @@ temporal_columns = [c for c in df.columns if c.startswith("t")]
 if not temporal_columns:
     raise RuntimeError("No temporal feature columns found")
 
-# Validate structure: t{0..4}_feature
-time_steps = sorted(set(int(c[1]) for c in temporal_columns if c[1].isdigit()))
+# Validate structure: t0_..., t1_..., ... t9_...
+time_steps = sorted(
+    {
+        int(c[1:c.index("_")])
+        for c in temporal_columns
+        if c.startswith("t") and "_" in c and c[1:c.index("_")].isdigit()
+    }
+)
 
 if time_steps != list(range(WINDOW_SIZE)):
-    raise RuntimeError(f"Expected timesteps 0-{WINDOW_SIZE-1}, got {time_steps}")
+    raise RuntimeError(f"Expected timesteps 0-{WINDOW_SIZE - 1}, got {time_steps}")
 
 # Extract base feature names (after tX_)
 base_features = sorted(
-    set(c.split("_", 1)[1] for c in temporal_columns)
+    set(c.split("_", 1)[1] for c in temporal_columns if "_" in c)
 )
 
 num_features = len(base_features)
@@ -69,7 +76,7 @@ print(f"[INFO] Features per timestep: {num_features}")
 # =====================================================
 # LOCK FEATURE ORDER (CRITICAL)
 # =====================================================
-ordered_columns = []
+ordered_columns: List[str] = []
 
 for t in range(WINDOW_SIZE):
     for f in base_features:
@@ -92,7 +99,7 @@ print("[INFO] Building LSTM tensors")
 X_flat = df[ordered_columns].values.astype(np.float32)
 y = df["label_binary"].values.astype(np.int64)
 
-num_samples = len(df)
+num_samples = int(len(df))
 
 try:
     X = X_flat.reshape(num_samples, WINDOW_SIZE, num_features)
@@ -116,7 +123,9 @@ if X.shape[2] != num_features:
 if not np.isfinite(X).all():
     raise RuntimeError("NaN or Inf detected in X tensor")
 
-unique_labels = np.unique(y)
+# Make Pylance happy by forcing a concrete ndarray before np.unique
+y_np = np.asarray(y, dtype=np.int64)
+unique_labels = np.unique(y_np)
 print(f"[INFO] Labels present: {unique_labels}")
 
 # =====================================================
@@ -124,13 +133,13 @@ print(f"[INFO] Labels present: {unique_labels}")
 # =====================================================
 print("[INFO] Saving tensors")
 
-np.save(X_PATH, X)
-np.save(Y_PATH, y)
+np.save(str(X_PATH), X.astype(np.float32))
+np.save(str(Y_PATH), y_np)
 
 schema = {
-    "window_size": WINDOW_SIZE,
-    "num_features": num_features,
-    "flattened_features": expected_total,
+    "window_size": int(WINDOW_SIZE),
+    "num_features": int(num_features),
+    "flattened_features": int(expected_total),
     "feature_names": base_features,
     "temporal_order": [
         f"t{t}_{f}" for t in range(WINDOW_SIZE) for f in base_features
@@ -138,14 +147,14 @@ schema = {
     "num_samples": int(num_samples),
 }
 
-with open(SCHEMA_PATH, "w") as f:
+with open(SCHEMA_PATH, "w", encoding="utf-8") as f:
     json.dump(schema, f, indent=2)
 
 elapsed = time.time() - start_time
 
 print("[SUCCESS] LSTM tensor generation complete")
 print(f"[INFO] X shape: {X.shape}")
-print(f"[INFO] y shape: {y.shape}")
+print(f"[INFO] y shape: {y_np.shape}")
 print(f"[INFO] Saved → {X_PATH}")
 print(f"[INFO] Saved → {Y_PATH}")
 print(f"[INFO] Saved → {SCHEMA_PATH}")
