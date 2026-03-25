@@ -19,7 +19,8 @@ STATS_PATH = OUTPUT_DIR / "temporal_generation_stats.csv"
 
 LABEL_COL = "label_binary"
 
-WINDOW_SIZE = 5
+# FIXED: match the current LSTM contract
+WINDOW_SIZE = 10
 STRIDE = 1
 CHUNK_SIZE = 50_000
 
