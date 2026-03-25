@@ -55,7 +55,7 @@ for w in ROLL_WINDOWS:
 # -----------------------------
 burst_features = {
     "burst_score": (
-        delta_df.get("flow_count_delta", 0).abs()
+        np.abs(delta_df.get("flow_count_delta", 0))
         * df.get("attack_density", 0)
     )
 }
