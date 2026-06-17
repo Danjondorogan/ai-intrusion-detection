@@ -7,13 +7,22 @@ import tensorflow as tf
 import os
 import logging
 
+# ---------------------------------------------------
+# PATHS
+# ---------------------------------------------------
+
 MODEL_PATH = os.environ.get("MODEL_PATH") or os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "models", "dos_lstm_final.keras")
 )
 
+# 🔥 FIXED CONFIG (MATCHES TRAINING)
 WINDOW_SIZE = int(os.environ.get("WINDOW_SIZE", 10))
-FEATURES_PER_STEP = int(os.environ.get("FEATURES_PER_STEP", 86))
-FEATURE_COUNT = WINDOW_SIZE * FEATURES_PER_STEP
+FEATURES_PER_STEP = int(os.environ.get("FEATURES_PER_STEP", 84))  # ✅ FIXED
+FEATURE_COUNT = WINDOW_SIZE * FEATURES_PER_STEP  # 10 * 84 = 840
+
+# ---------------------------------------------------
+# CORS
+# ---------------------------------------------------
 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -37,9 +46,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------------------------------------------
+# REQUEST / RESPONSE MODELS
+# ---------------------------------------------------
+
 class PredictRequest(BaseModel):
     session_id: Optional[str] = "anonymous"
     features: List[float]
+
 
 class PredictResponse(BaseModel):
     session_id: str
@@ -49,10 +63,17 @@ class PredictResponse(BaseModel):
     required_timesteps: int
     timesteps_collected: int
 
+
+# ---------------------------------------------------
+# MODEL LOADER
+# ---------------------------------------------------
+
 MODEL = None
+
 
 def load_model_safe(path: str):
     global MODEL
+
     if MODEL is not None:
         return MODEL
 
@@ -64,30 +85,58 @@ def load_model_safe(path: str):
     log.info(f"Loading model from: {path}")
     MODEL = tf.keras.models.load_model(path)
     log.info("Model loaded successfully")
+
     return MODEL
 
+
+# preload (optional)
 try:
     load_model_safe(MODEL_PATH)
 except Exception as e:
     log.warning(f"Model not loaded at startup: {e}")
 
+
+# ---------------------------------------------------
+# ROUTES
+# ---------------------------------------------------
+
 @app.get("/health")
 async def health():
-    return {"status": "API running"}
+    return {
+        "status": "API running",
+        "window_size": WINDOW_SIZE,
+        "features_per_step": FEATURES_PER_STEP,
+        "expected_input": FEATURE_COUNT,
+    }
+
+
+# ---------------------------------------------------
+# PREDICT
+# ---------------------------------------------------
 
 @app.post("/predict", response_model=PredictResponse)
 async def predict(req: PredictRequest):
+
     features = req.features
 
+    # -----------------------------
+    # VALIDATION
+    # -----------------------------
     if not isinstance(features, list):
-        raise HTTPException(status_code=422, detail="features must be a list of numbers")
+        raise HTTPException(
+            status_code=422,
+            detail="features must be a list of numbers"
+        )
 
     if len(features) != FEATURE_COUNT:
         raise HTTPException(
             status_code=422,
-            detail=f"features must be length {FEATURE_COUNT} (got {len(features)})",
+            detail=f"features must be length {FEATURE_COUNT} (got {len(features)})"
         )
 
+    # -----------------------------
+    # LOAD MODEL
+    # -----------------------------
     try:
         model = load_model_safe(MODEL_PATH)
     except FileNotFoundError as e:
@@ -95,14 +144,26 @@ async def predict(req: PredictRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Model load error: {e}")
 
+    # -----------------------------
+    # RESHAPE INPUT
+    # -----------------------------
     try:
-        x = np.array(features, dtype=np.float32).reshape((1, WINDOW_SIZE, FEATURES_PER_STEP))
+        x = np.array(features, dtype=np.float32).reshape(
+            (1, WINDOW_SIZE, FEATURES_PER_STEP)
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"feature reshape failed: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"feature reshape failed: {e}"
+        )
 
+    # -----------------------------
+    # PREDICT
+    # -----------------------------
     try:
         preds = model.predict(x, verbose=0)
 
+        # handle different output shapes safely
         if preds.ndim == 2 and preds.shape[1] == 1:
             prob = float(preds[0, 0])
         elif preds.ndim == 2 and preds.shape[1] >= 2:
@@ -113,9 +174,15 @@ async def predict(req: PredictRequest):
         pred_label = 1 if prob >= 0.5 else 0
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"model prediction failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"model prediction failed: {e}"
+        )
 
-    response = {
+    # -----------------------------
+    # RESPONSE
+    # -----------------------------
+    return {
         "session_id": req.session_id or "anonymous",
         "prediction": pred_label,
         "dos_probability": round(prob, 6),
@@ -123,10 +190,15 @@ async def predict(req: PredictRequest):
         "required_timesteps": WINDOW_SIZE,
         "timesteps_collected": WINDOW_SIZE,
     }
-    return response
+
+
+# ---------------------------------------------------
+# SHAP GLOBAL (OPTIONAL)
+# ---------------------------------------------------
 
 @app.get("/shap/global")
 async def shap_global():
+
     art = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
@@ -135,11 +207,14 @@ async def shap_global():
             "shap_global_top20.csv",
         )
     )
+
     if os.path.exists(art):
         import csv
+
         with open(art, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
+
         return rows
 
     raise HTTPException(status_code=404, detail="shap global not found")

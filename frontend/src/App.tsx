@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 
+import { AIInsights } from "./components/AIInsights";
+
 import { Header } from "./components/Header";
 import { ProbabilityGauge } from "./components/ProbabilityGauge";
 import { ControlPanel } from "./components/ControlPanel";
@@ -53,9 +55,9 @@ function App() {
       .filter((v) => v.trim() !== "")
       .map(Number);
 
-    if (parsed.length !== FEATURE_COUNT) {
-      alert(`Please enter exactly ${FEATURE_COUNT} features`);
-      return;
+    if (parsed.length !== 840) {
+    alert("Please enter exactly 840 features");
+    return;
     }
 
     setIsLoading(true);
@@ -140,7 +142,15 @@ function App() {
               collected={currentStatus?.timesteps_collected ?? null}
               required={currentStatus?.required_timesteps ?? null}
             />
-            <TrafficChart data={logs} />
+            <div className="space-y-6">
+              <TrafficChart data={logs} />
+
+              <AIInsights
+                features={currentStatus?.top_features}
+                probability={currentStatus?.dos_probability}
+                latency={currentStatus?.latency_ms}
+              />
+            </div>
           </div>
         </div>
 

@@ -50,6 +50,7 @@ class PredictResponse(BaseModel):
     required_timesteps: Optional[int] = None
     consecutive_detections: Optional[int] = None
     latency_ms: Optional[float] = None
+    top_features: Optional[List[dict]] = None
 
 
 class ExplainResponse(BaseModel):
@@ -91,10 +92,10 @@ async def predict(request: PredictRequest):
     if not request.session_id:
         raise HTTPException(status_code=400, detail="Invalid session_id")
 
-    if len(request.features) != 84:
+    if len(request.features) != 840:
         raise HTTPException(
             status_code=400,
-            detail=f"Expected 84 features, got {len(request.features)}",
+            detail=f"Expected 840 features, got {len(request.features)}",
         )
 
     try:
@@ -113,6 +114,12 @@ async def predict(request: PredictRequest):
         if engine.buffer.is_ready():
             SESSION_LAST_TENSOR[request.session_id] = engine.get_temporal_tensor()
             SESSION_LAST_UPDATE[request.session_id] = time.time()
+
+        print("\n========== PREDICT ==========")
+        print("Session:", request.session_id)
+        print("Features:", len(request.features))
+        print("Result:", result)
+        print("=============================\n")
 
         return result
 

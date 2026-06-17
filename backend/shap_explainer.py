@@ -86,18 +86,19 @@ def plot_bar_importance(values: np.ndarray, session_id: str, top_k: int) -> str:
     return str(path)
 
 def plot_temporal_heatmap(matrix: np.ndarray, session_id: str) -> str:
-    vmax = np.percentile(np.abs(matrix), 95)
-    vmax = max(vmax, 1e-6)
+    vmax = float(np.percentile(np.abs(matrix), 95))
+    vmax = float(max(vmax, 1e-6))
 
     plt.figure(figsize=(16, 6))
     sns.heatmap(
         matrix,
         cmap="RdBu_r",
         center=0,
-        vmin=-vmax,
-        vmax=vmax,
+        vmin=float(-vmax),
+        vmax=float(vmax),
         cbar_kws={"label": "SHAP Contribution"}
     )
+    
     plt.xlabel("Feature Index")
     plt.ylabel("Time Step")
     plt.title("Temporal SHAP Attribution")

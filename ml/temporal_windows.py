@@ -154,14 +154,14 @@ for file_path in input_files:
         values = chunk[numeric_features].values.astype(np.float32)
         labels = chunk[LABEL_COL].values.astype(int)
 
-        if prev_tail_values is not None:
-            values = np.vstack([prev_tail_values, values])
-            labels = np.concatenate([prev_tail_labels, labels])
+        if prev_tail_values is not None and prev_tail_labels is not None:
+            values = np.vstack((prev_tail_values, values))
+            labels = np.concatenate((prev_tail_labels, labels))
 
         total_rows = len(values)
         file_rows += len(chunk)
 
-        if total_rows < WINDOW_SIZE:
+        if total_rows < WINDOW_SIZE:    
             prev_tail_values = values
             prev_tail_labels = labels
             continue

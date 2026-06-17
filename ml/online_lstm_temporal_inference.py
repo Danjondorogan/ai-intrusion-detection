@@ -130,3 +130,4 @@ if __name__ == "__main__":
     for i in range(WINDOW_SIZE + 3):
         result = engine.predict(dummy_vector)
         print(f"[STEP {i}] → {result}")
+

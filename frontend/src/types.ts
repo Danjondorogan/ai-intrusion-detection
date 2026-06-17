@@ -4,12 +4,26 @@ export interface PredictionRequest {
 }
 
 export interface PredictionResponse {
-  status: 'warming_up' | 'ready';
+  status: 'warming_up' | 'monitoring' | 'attack';
+
   dos_probability: number | null;
-  prediction: 0 | 1 | null;
+
+  prediction: number | null;
+
   timesteps_collected: number | null;
+
   required_timesteps: number | null;
-  timestamp?: number; // Added for frontend tracking
+
+  consecutive_detections?: number;
+
+  latency_ms?: number;
+
+  timestamp?: number;
+  top_features?: {
+  name: string;
+  impact: number;
+}[];
+
 }
 
 export interface LogEntry extends PredictionResponse {
@@ -17,7 +31,6 @@ export interface LogEntry extends PredictionResponse {
 }
 
 export interface HealthStatus {
-  status: 'online' | 'offline' | 'checking';
+  status: string;
 }
-
-export const FEATURE_COUNT = 84;
+export const FEATURE_COUNT = 840;

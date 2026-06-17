@@ -284,11 +284,19 @@ def plot_threshold_tradeoffs(df, outpath_fpfn, outpath_pr, outpath_cov):
 
 def generate_classification_report_csv(y_true, y_pred, outpath):
     report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
+
+    if not isinstance(report, dict):
+        raise RuntimeError("classification_report did not return dict")
+    
     rows = []
+
     for label, metrics in report.items():
         if label in ("accuracy", "macro avg", "weighted avg"):
             continue
         rows.append({"class": label, "precision": metrics.get("precision",0), "recall": metrics.get("recall",0), "f1": metrics.get("f1-score",0), "support": metrics.get("support",0)})
+        
+        if not isinstance(metrics, dict):
+            continue
     pd.DataFrame(rows).to_csv(outpath, index=False)
     log("Saved classification report csv: " + outpath)
 

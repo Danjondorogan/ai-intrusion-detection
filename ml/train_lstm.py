@@ -201,7 +201,7 @@ print(cm)
 
 # Save report
 with open(RESULTS_DIR / "classification_report.txt", "w") as f:
-    f.write(report)
+    f.write(str(report))
 
 # Save confusion matrix CSV
 np.savetxt(RESULTS_DIR / "confusion_matrix.csv", cm, delimiter=",")
