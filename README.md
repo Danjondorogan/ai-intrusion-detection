@@ -1,257 +1,431 @@
-# AI Intrusion Detection System (DoS detection)
+# AI Intrusion Detection System using Deep Learning for DoS Attack Detection
 
-**Repository:** https://github.com/Danjondorogan/ai-intrusion-detection
-
-**Short summary**
-
-This project is a research-grade AI Intrusion Detection System (IDS) that detects Denial-of-Service (DoS) attacks using a trained LSTM neural network. It includes an ML pipeline for preparing data and training, a FastAPI backend for real-time inference, a React + TypeScript frontend dashboard for visualization, and SHAP-based explainability for model decisions.
-
-# Table of contents
-
-1. [Project overview](#project-overview)  
-2. [Repository structure](#repository-structure)  
-3. [Model details](#model-details)  
-4. [Backend API (FastAPI)](#backend-api-fastapi)  
-5. [Frontend (React + TypeScript)](#frontend-react--typescript)  
-6. [Local setup (Windows / PowerShell)](#local-setup-windows--powershell)  
-7. [Run backend and test](#run-backend-and-test)  
-8. [Run frontend (dev)](#run-frontend-dev)  
-9. [SHAP explainability](#shap-explainability)  
-10. [Retraining the model](#retraining-the-model)  
-11. [Docker (optional)](#docker-optional)  
-12. [CI / Tests / Publishing](#ci--tests--publishing)  
-13. [Dataset used](#dataset-used)  
-14. [Data & privacy](#data--privacy)  
-15. [Troubleshooting](#troubleshooting)  
-16. [Ethical use](#ethical-use)  
-17. [Credits & license](#credits--license)
+![Python](https://img.shields.io/badge/Python-3.10-blue)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.15-orange)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.128-green)
+![React](https://img.shields.io/badge/React-TypeScript-blue)
+![License](https://img.shields.io/badge/License-MIT-red)
 
 ---
 
-## Project overview
+## Project Overview
 
-The system detects DoS attacks using a temporal LSTM model that looks at short windows of network flow features. The frontend sends flattened feature vectors (80 floats) to the backend. The backend shapes them into `(1, 10, 8)` and runs the model to return a probability and label.
+This project is a Artificial Intelligence based Intrusion Detection System (IDS) developed for detecting Denial-of-Service (DoS) attacks in network traffic using a Long Short-Term Memory (LSTM) neural network.
+
+The system combines machine learning, explainable AI, backend API development, and frontend visualization into a complete end-to-end cybersecurity platform.
+
+The machine learning pipeline processes temporal network flow sequences extracted from the CICIDS2017 Improved dataset and learns attack patterns across multiple timesteps. A trained LSTM model performs real-time classification of network traffic as either normal or malicious.
+
+The project consists of:
+
+- Deep Learning based DoS attack detection using LSTM
+- FastAPI backend for real-time inference
+- React + TypeScript dashboard for visualization
+- SHAP explainability framework for model interpretation
+- Automated evaluation and reporting pipeline
+- Publication and presentation quality result generation
 
 Main goals:
 
-- Real-time inference on incoming network flow features
-- Clean API for dashboard integration
-- Human-facing dashboard showing probability, traffic chart, logs, and per-feature explainability using SHAP
-- Research-ready repository for publication
+- Real-time network intrusion detection
+- Explainable AI driven cybersecurity decisions
+- High-performance temporal attack classification
+- Interactive monitoring dashboard
+- Research-grade reproducibility and evaluation
 
 ---
 
-## Repository structure
+## Key Features
+
+### Machine Learning
+
+- Temporal sequence learning using LSTM
+- Binary classification:
+  - Normal Traffic
+  - DoS Attack Traffic
+- Automatic preprocessing pipeline
+- Feature scaling and tensor generation
+- Model evaluation and visualization
+
+### Backend
+
+- FastAPI REST API
+- Real-time predictions
+- Session-based inference
+- JSON response interface
+- Model persistence
+
+### Frontend
+
+- React + TypeScript dashboard
+- Live prediction monitoring
+- Attack probability visualization
+- Detection history tracking
+- Interactive user controls
+
+### Explainability
+
+- SHAP based feature attribution
+- Global feature importance
+- Local prediction explanations
+- Waterfall visualizations
+- Model interpretability reports
+
+---
+
+## System Architecture
+
+```
+Network Traffic
+       ↓
+Feature Extraction
+       ↓
+Temporal Sequence Generation
+       ↓
+Feature Scaling
+       ↓
+LSTM Neural Network
+       ↓
+Attack Probability
+       ↓
+FastAPI Backend
+       ↓
+React Dashboard
+       ↓
+Explainability Engine (SHAP)
+```
+
+---
+
+## Repository Structure
+
+```
 ai-intrusion-detection/
-├─ backend/
-│ ├─ api.py # FastAPI endpoint(s)
-│ ├─ inference.py # Model loading & prediction helpers
-│ ├─ main.py # FastAPI app / startup
-│ ├─ shap_explainer.py # SHAP helper (explainability)
-│ ├─ requirements.txt # Backend requirements (optional)
-│ └─ utils/
-│ └─ ...
-├─ frontend/
-│ ├─ index.html
-│ ├─ package.json
-│ ├─ tsconfig.json
-│ ├─ vite.config.ts
-│ └─ src/
-│ ├─ App.tsx
-│ ├─ main.tsx
-│ ├─ services/api.ts # API calls to backend
-│ └─ components/ # UI components (Gauge, Chart, ControlPanel...)
-├─ ml/
-│ ├─ train_lstm.py
-│ ├─ prepare_lstm_tensors.py
-│ └─ evaluation/
-├─ models/
-│ └─ dos_lstm_final.keras # Saved model for inference
-├─ data/
-│ └─ sample/
-├─ docs/
-│ └─ report.pdf
-├─ Dockerfile
-├─ README.md # <-- you are here
-└─ LICENSE
-
-
----
-
-## Model details
-
-- **Model type:** LSTM (binary classifier)  
-- **Purpose:** Detect DoS from network flow features  
-- **Saved model:** `models/dos_lstm_final.keras`  
-- **Expected input shape to the model:** `(1, WINDOW_SIZE, FEATURES_PER_STEP)`  
-  - `WINDOW_SIZE = 10`  
-  - `FEATURES_PER_STEP = 8`  
-- **Frontend flattened input:** `10 × 8 = 80` floats per prediction
-
-Make sure the frontend always sends exactly **80 floats** in the expected order. The backend validates length and reshapes into `(1, 10, 8)`.
+├── backend/
+│   ├── api.py
+│   ├── inference.py
+│   ├── main.py
+│   ├── shap_explainer.py
+│   └── ...
+│
+├── frontend/
+│   ├── src/
+│   ├── components/
+│   ├── services/
+│   ├── App.tsx
+│   └── ...
+│
+├── ml/
+│   ├── prepare_lstm_tensors.py
+│   ├── train_lstm.py
+│   ├── generate_final_presentation_result.py
+│   └── evaluation/
+│
+├── models/
+│   ├── dos_lstm_best.keras
+│   └── dos_lstm_final.keras
+│
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   └── tensors/
+│
+├── results/
+│   ├── final_presentation/
+│   ├── evaluation/
+│   └── explainability/
+│
+├── README.md
+└── LICENSE
+```
 
 ---
 
-## Backend API (FastAPI)
+## Dataset Information
 
-**File:** `backend/api.py`
+This project uses the CICIDS2017 Improved Dataset and converts raw network flow records into temporal sequences suitable for LSTM training.
 
-### Endpoint
+**Official Source:** https://www.unb.ca/cic/datasets/ids-2017.html
 
-**POST** `/predict`
+Final Tensor Shape: `(312165, 10, 84)`
 
-**Request JSON**
+| Dimension | Value | Description              |
+| --------- | ----- | ------------------------ |
+| 312,165   | axis 0 | Total sequences          |
+| 10        | axis 1 | Temporal window size     |
+| 84        | axis 2 | Features per timestep    |
+
+---
+
+## Model Details
+
+### Dataset Statistics
+
+| Metric                    | Value        |
+| ------------------------- | ------------ |
+| Total Samples             | 312,165      |
+| Normal Samples            | 175,411      |
+| Attack Samples            | 136,754      |
+| Sequence Length           | 10 Timesteps |
+| Features per Timestep     | 84           |
+| Input Shape               | (10, 84)     |
+| Total Features per Sample | 840          |
+
+### Model Architecture
+
+- **Model Type:** Long Short-Term Memory (LSTM)
+- **Classification Type:** Binary Classification
+- **Purpose:** Detection of Denial-of-Service (DoS) Attacks
+- **Saved Model:** `models/dos_lstm_final.keras`
+
+```
+Input Layer → (10, 84)
+       ↓
+LSTM (128 Units)
+       ↓
+Batch Normalization
+       ↓
+Dropout
+       ↓
+LSTM (64 Units)
+       ↓
+Batch Normalization
+       ↓
+Dropout
+       ↓
+Dense (64 Units)
+       ↓
+Dense (1 Unit, Sigmoid)
+```
+
+### Model Parameters
+
+| Parameter Type         | Count   |
+| ---------------------- | ------- |
+| Total Parameters       | 163,457 |
+| Trainable Parameters   | 163,073 |
+| Non-Trainable Parameters | 384   |
+
+### Model Performance
+
+| Metric    | Score  |
+| --------- | ------ |
+| Accuracy  | 99.95% |
+| Precision | 99.96% |
+| Recall    | 99.92% |
+| F1 Score  | 99.94% |
+| ROC-AUC   | ~1.00  |
+
+### Classification Report
+
+**Normal Traffic (Class 0)**
+
+| Metric    | Score  |
+| --------- | ------ |
+| Precision | 0.9994 |
+| Recall    | 0.9997 |
+| F1 Score  | 0.9995 |
+
+**DoS Attack Traffic (Class 1)**
+
+| Metric    | Score  |
+| --------- | ------ |
+| Precision | 0.9996 |
+| Recall    | 0.9992 |
+| F1 Score  | 0.9994 |
+
+---
+
+## Backend API
+
+**Base Endpoint:** `POST /predict`
+
+**Request:**
 
 ```json
 {
-  "session_id": "string",
-  "features": [ /* exactly 80 floats */ ]
+    "session_id": "test_session",
+    "features": [ /* exactly 840 floats */ ]
 }
 ```
 
-Response JSON:
+**Input tensor shape reshaped to:** `(1, 10, 84)`
+
+**Response:**
+
+```json
 {
-  "session_id": "string",
-  "prediction": 0,
-  "dos_probability": 0.123,
-  "status": "normal" | "attack",
-  "required_timesteps": 10,
-  "timesteps_collected": 10
+    "session_id": "test_session",
+    "prediction": 1,
+    "dos_probability": 0.9987,
+    "status": "attack"
 }
+```
 
-prediction: 0 = normal, 1 = attack
-dos_probability: model probability (0.0 - 1.0)
-status: "attack" or "normal"
-required_timesteps: window size (10)
-timesteps_collected: how many timesteps are currently buffered
+---
 
-Notes
-The model is loaded once at startup for speed.
-CORS is enabled during development. Configure allowed origins in production.
-backend/inference.py provides helpers to validate, reshape, and call the model.
+## Frontend Dashboard
 
-## Frontend (React + TypeScript)
+The web dashboard provides:
 
-Located under frontend/.
-src/services/api.ts contains the API client that calls POST /predict.
-ControlPanel provides a button to send a single sample (80 features).
+- Real-time attack probability gauge
+- Prediction history
+- Detection logs
+- Traffic visualization
+- Performance metrics
+- Explainability outputs
 
-UI includes:
-Probability gauge
-Traffic chart (history of probabilities)
-Metrics card (last prediction, latency)
-Log viewer (session logs)
-Explainability panel (SHAP)
-During development, configure the frontend to use http://127.0.0.1:8000 as the backend base URL or set an environment variable for the backend host.
+ControlPanel provides controls for sending network flow sequences containing 840 features (10 timesteps × 84 features).
 
-Local setup (Windows / PowerShell)
-Important: Use Python 3.10 (TensorFlow compatibility). If you have multiple Python versions, prefer py -3.10.
+Built using:
 
-1) Create & activate virtual environment
-py -3.10 -m venv .venv
-.\.venv\Scripts\Activate
+- React
+- TypeScript
+- Vite
+- Recharts
 
-2) Install Python dependencies (backend + ML)
-if backend/requirements.txt exists:
-pip install -r backend/requirements.txt
+---
 
-otherwise:
-pip install fastapi uvicorn numpy pandas scikit-learn joblib shap matplotlib tensorflow==2.15 seaborn xgboost
+## Explainable AI (SHAP)
 
-3) Install Node dependencies (frontend)
+The system integrates SHAP explainability to understand model decisions.
+
+### Generated Explainability Outputs
+
+- Top 15 Feature Importance Ranking
+- Global SHAP Summary Plot
+- Feature Importance Table
+- Waterfall Style Local Explanations
+- Feature Contribution Analysis
+
+The explainability pipeline is also integrated into the automated result generation framework used for project presentations and evaluation.
+
+---
+
+## Evaluation and Visualization Pipeline
+
+The project contains an automated result generation framework located in:
+
+```
+ml/generate_final_presentation_result.py
+```
+
+This script generates publication and presentation quality visualizations including:
+
+1. Dataset Overview
+2. Class Distribution
+3. Dataset Summary Table
+4. Feature Statistics
+5. Confusion Matrix
+6. ROC Curve
+7. Precision Recall Curve
+8. Threshold Optimization
+9. Prediction Probability Distribution
+10. Performance Dashboard
+11. Top Feature Importance
+12. Feature Importance Table
+13. SHAP Summary Plot
+14. SHAP Waterfall Plot
+
+All figures are exported as high-resolution PNG files and stored inside the `results/` directory.
+
+---
+
+## Local Setup
+
+**Create virtual environment:**
+
+```powershell
+python -m venv .venv
+```
+
+**Activate:**
+
+```powershell
+.\.venv\Scripts\activate
+```
+
+**Install dependencies:**
+
+```powershell
+pip install -r requirements.txt
+```
+
+---
+
+## Running the Backend
+
+```powershell
+uvicorn backend.main:app --reload
+```
+
+Backend URL: `http://127.0.0.1:8000`
+
+---
+
+## Running the Frontend
+
+```powershell
 cd frontend
 npm install
-cd ..
-
-## Run backend and test
-
-Start backend: uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-
-Example test (PowerShell)
-
-# prepare an 80-element test array (all zeros)
-$features = @(for ($i=0; $i -lt 80; $i++) { 0.0 })
-$body = @{
-  session_id = "local-test-1"
-  features = $features
-} | ConvertTo-Json -Depth 5
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/predict" -Method Post -ContentType "application/json" -Body $body
-
-## Run frontend (development)
-
-From repo root:
-cd frontend
 npm run dev
+```
 
-Open the dev URL (usually http://localhost:5173) in the browser. Make sure backend is running.
+Frontend URL: `http://localhost:5173`
 
-## SHAP explainability
+---
 
-SHAP code is in backend/shap_explainer.py.
-It uses the trained model and a small background dataset to compute per-feature attributions.
-For performance, compute SHAP offline or cache values; real-time SHAP can be slow.
-Example endpoint: POST /explain (same body as /predict) → returns an array of 80 SHAP attribution values and optional top-k feature names.
-Developer note: Use a small background set (e.g., 100 samples) or an approximate explainer for production.
+## Reproducing Training
 
-## Retraining the model
+1. Download the CICIDS2017 dataset from the official source
+2. Place raw CSV files in `data/raw/`
+3. Run `ml/prepare_lstm_tensors.py` to generate tensors
+4. Run `ml/train_lstm.py` to train the LSTM model
+5. Trained model will be saved to `models/`
+6. Run the evaluation pipeline to generate metrics and figures
+7. Run `ml/generate_final_presentation_result.py` for explainability outputs
 
-If you need to retrain:
-Download the original CICIDS2017 dataset (see dataset section) and place raw CSV/XLSX in data/raw/.
-Run ml/prepare_lstm_tensors.py to create tensors and the feature schema.
-Train with ml/train_lstm.py (adjust hyperparameters at the top).
-Save the trained model to models/dos_lstm_final.keras.
-Commit the new model (keep file size reasonable; consider Git LFS if large).
-Important: Keep the same input order, length (80), and scaling approach used in inference.
+---
 
-## Docker (optional)
+## Applications
 
-A basic Dockerfile is included. Example:
-docker build -t ai-ids .
-docker run -p 8000:8000 ai-ids
-If you use Docker, ensure the model and any required small data files are included in the image or mounted as a volume.
+- Intrusion Detection Systems
+- Network Security Monitoring
+- Smart Cyber-Physical Systems
+- Critical Infrastructure Protection
+- Real-Time Threat Detection
+- Security Operations Centers (SOC)
 
-## CI / Tests / Publishing
+---
 
-Add GitHub Actions workflows for linting & unit tests.
-Add backend/tests/test_api.py and frontend/src/__tests__ for basic checks.
-Do NOT commit raw datasets. Use .gitignore to exclude data/raw/ and .venv/.
+## Ethical Use
 
-## Dataset used
+This project is intended solely for:
 
-This project uses the CICIDS2017_improved dataset for training and evaluation.
-The CICIDS2017 dataset is a commonly used benchmark for intrusion detection research. It contains realistic network traffic including both normal behavior and many attack scenarios (DoS, DDoS, brute force, port scans, botnets, web attacks). For this project, the dataset was cleaned and preprocessed into a form suitable for LSTM training.
+- Academic Research
+- Educational Purposes
+- Cybersecurity Training
+- Defensive Security Applications
 
-Official dataset source:
-https://www.unb.ca/cic/datasets/ids-2017.html
+Users must comply with all applicable laws, institutional policies, and ethical guidelines when deploying or testing intrusion detection systems.
 
-To reproduce training: download the original dataset, place raw files into data/raw/, and run the preprocessing scripts in ml/.
+---
 
-## Data & privacy
+## Credits & License
 
-Raw dataset files are not included in this repository because they are large and may contain sensitive network traffic. The repository includes:
-small sample inputs for testing (data/sample/)
-feature schema (tensors/feature_schema.json)
-the trained model (models/dos_lstm_final.keras)
+**Author**
 
-Follow your institution's policies and local laws when working with real network traffic. Anonymize or remove sensitive fields before sharing.
+Rudrapriya Singh Chauhan
+B.Tech Cyber Physical Systems
+Manipal Institute of Technology
+Manipal Academy of Higher Education
 
-## Troubleshooting
-ImportError: No module named 'tensorflow'
-→ Use Python 3.10 and reinstall dependencies: py -3.10 -m venv .venv then pip install ....
-422 Unprocessable Entity from /predict
-→ The frontend must send exactly 80 floats. Check the features array length in the request.
-VS Code shows missing imports but code runs
-→ Make sure VS Code uses the .venv interpreter (Ctrl+Shift+P → Python: Select Interpreter → .venv\Scripts\python.exe) and reload the window.
-SHAP is slow
-→ Use fewer background samples or an approximate explainer; consider running SHAP offline and caching results.
+**Dataset**
 
-## Ethical use
+CICIDS2017 Dataset
+Canadian Institute for Cybersecurity
+University of New Brunswick
 
-This project is intended for cybersecurity research and education only. Do not use it for unauthorized monitoring or intrusion. Always follow institutional rules and local laws when working with network traffic.
+**License**
 
-## Credits & license
-License: MIT (see LICENSE)
-Dataset: CICIDS2017 (University of New Brunswick)
-Model: LSTM trained using cleaned CICIDS2017_improved
-
-
+MIT License — see [LICENSE](LICENSE) for complete details.
