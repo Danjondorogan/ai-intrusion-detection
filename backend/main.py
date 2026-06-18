@@ -7,9 +7,8 @@ import threading
 import numpy as np
 import time
 
-from backend.inference import OnlineLSTMInference
-from backend.shap_explainer import explain_lstm_decision
-
+from inference import OnlineLSTMInference
+from shap_explainer import explain_lstm_decision
 
 app = FastAPI(
     title="AI Intrusion Detection System",

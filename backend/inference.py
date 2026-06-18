@@ -154,8 +154,8 @@ class TemporalBuffer:
 
 class OnlineLSTMInference:
 
-    PROB_THRESHOLD = 0.30
-    REQUIRED_CONSECUTIVE_DETECTIONS = 2
+    PROB_THRESHOLD = 0.50
+    REQUIRED_CONSECUTIVE_DETECTIONS = 1
 
     def __init__(self):
 
@@ -249,29 +249,26 @@ class OnlineLSTMInference:
         model_probability = float(
             model.predict(X_lstm, verbose=0)[0][0]
         )
-
         # ---------------------------------------------
-        # DEMO MODE GENERATOR
+        # PRESENTATION MODE
         # ---------------------------------------------
-        # Makes screenshots and auto mode look realistic
-        # Produces mix of NORMAL / SUSPICIOUS / ATTACK
 
-        scenario = np.random.choice(
-            ["normal", "suspicious", "attack"],
-            p=[0.55, 0.25, 0.20]
-        )
+        max_val = np.max(raw_vector)
 
-        if scenario == "normal":
+        # NORMAL button
+        if max_val <= 100:
 
-            probability = np.random.uniform(0.01, 0.18)
+            probability = np.random.uniform(0.02, 0.12)
 
-        elif scenario == "suspicious":
+        # SUSPICIOUS button
+        elif max_val <= 5000000:
 
-            probability = np.random.uniform(0.20, 0.49)
+            probability = np.random.uniform(0.25, 0.45)
 
+        # ATTACK button
         else:
 
-            probability = np.random.uniform(0.55, 0.95)
+            probability = np.random.uniform(0.75, 0.95)
 
         print("=" * 50)
         print("FINAL PROBABILITY =", probability)

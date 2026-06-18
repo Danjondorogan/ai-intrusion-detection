@@ -8,7 +8,7 @@ import shap
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from backend.inference import model, WINDOW_SIZE, NUM_FEATURES
+from inference import model, WINDOW_SIZE, NUM_FEATURES
 
 logger = logging.getLogger("SHAPExplainer")
 logger.setLevel(logging.INFO)

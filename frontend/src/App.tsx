@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 
 import { AIInsights } from "./components/AIInsights";
-
+import { ModelInfoCard } from "./components/ModelInfoCard";
+import { ThreatStats } from "./components/ThreatStats";
 import { Header } from "./components/Header";
 import { ProbabilityGauge } from "./components/ProbabilityGauge";
 import { ControlPanel } from "./components/ControlPanel";
@@ -113,21 +114,28 @@ function App() {
 
       <main className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
 
-        {/* Project Description (Research Grade Section) */}
+        {/* Project Description */}
         <div className="bg-zinc-900 rounded-xl p-5 border border-zinc-800">
           <h2 className="text-xl font-semibold mb-2">
             AI-Based Intrusion Detection System
           </h2>
+
           <p className="text-sm text-zinc-400 leading-relaxed">
-            This system uses a deep learning LSTM model to detect Distributed
-            Denial-of-Service (DoS) attacks from network traffic patterns.
-            Temporal flow features are analyzed in real time to estimate attack
-            probability and classify traffic as normal or malicious.
+            This system uses a deep learning LSTM model to detect
+            Distributed Denial-of-Service (DoS) attacks from network
+            traffic patterns. Temporal flow features are analyzed in
+            real time to estimate attack probability and classify
+            traffic as normal or malicious.
           </p>
         </div>
 
-        {/* Top Row */}
+        {/* Threat Statistics */}
+        <ThreatStats logs={logs} />
+
+        {/* Top Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* Probability Gauge */}
           <div>
             <ProbabilityGauge
               probability={currentStatus?.dos_probability ?? null}
@@ -136,13 +144,17 @@ function App() {
             />
           </div>
 
+          {/* Main Analytics */}
           <div className="lg:col-span-2 flex flex-col gap-6">
+
             <MetricsCard
               status={currentStatus?.status ?? "warming_up"}
               collected={currentStatus?.timesteps_collected ?? null}
               required={currentStatus?.required_timesteps ?? null}
             />
+
             <div className="space-y-6">
+
               <TrafficChart data={logs} />
 
               <AIInsights
@@ -150,12 +162,18 @@ function App() {
                 probability={currentStatus?.dos_probability}
                 latency={currentStatus?.latency_ms}
               />
+
+              <ModelInfoCard />
+
             </div>
+
           </div>
+
         </div>
 
-        {/* Bottom Row */}
+        {/* Bottom Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[500px]">
+
           <div className="h-full">
             <ControlPanel
               sessionId={sessionId}
@@ -172,7 +190,9 @@ function App() {
           <div className="lg:col-span-2 h-full">
             <LogViewer logs={logs} />
           </div>
+
         </div>
+
       </main>
     </div>
   );
